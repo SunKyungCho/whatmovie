@@ -1,4 +1,4 @@
-package me.toybox.domain;
+package me.toybox.dto;
 
 import lombok.Getter;
 import lombok.Setter;
