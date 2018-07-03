@@ -1,13 +1,13 @@
 package me.toybox;
 
 
-import me.toybox.domain.Movie;
 import me.toybox.repository.MovieRepository;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @RunWith(SpringRunner.class)
@@ -18,12 +18,19 @@ public class MovieTest {
     MovieRepository movieRepository;
 
     @Test
-    public void MovieRepositoryTest() {
+    public void DatabaseConnectionTest() {
 
-        assertThat(movieRepository).isNotNull();
-//        Movie movie = new Movie();
-//        movieRepository.save(movie);
+        me.toybox.domain.Movie movie = new me.toybox.domain.Movie();
+        movie.setMovieCd("123");
+        movie.setMovieNm("Test");
+        me.toybox.domain.Movie returnMovie = movieRepository.save(movie);
+
+        me.toybox.domain.Movie movie2 = new me.toybox.domain.Movie();
+        movie.setMovieCd("123");
+        movie.setMovieNm("Test");
+        me.toybox.domain.Movie returnMovie2 = movieRepository.save(movie2);
+
+        assertThat(returnMovie).isNotNull();
+
     }
-
-
 }

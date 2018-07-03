@@ -1,46 +1,60 @@
 package me.toybox.domain;
 
-import lombok.Data;
-import javax.persistence.Column;
+import lombok.Getter;
+import lombok.Setter;
+import me.toybox.dto.Company;
+import me.toybox.dto.Director;
+import me.toybox.dto.MovieParam;
+
 import javax.persistence.Entity;
 import javax.persistence.Id;
-import javax.persistence.Table;
+import java.util.stream.Collectors;
 
-@Data
 @Entity
-@Table(name = "Movie")
+//@Table(name = "movie2000")
+@Getter @Setter
 public class Movie {
 
     @Id
     private String movieCd;
-    @Column
     private String movieNm;
-    @Column
     private String movieNmEn;
-    @Column
     private String prdtYear;
-    @Column
     private String openDt;
-    @Column
     private String typeNm;
-    @Column
     private String prdtStatNm;
-    @Column
     private String nationAlt;
-    @Column
     private String genreAlt;
-    @Column
     private String repNationNm;
-    @Column
     private String repGenreNm;
-    @Column
     private String directors;
-    @Column
-    private String peopleNm;
-    @Column
     private String companys;
-    @Column
-    private String companyCd;
-    @Column
-    private String companyNm;
+
+    public Movie() {
+    }
+
+    public Movie(MovieParam movieParam) {
+        this.movieCd = movieParam.getMovieCd();
+        this.movieNm = movieParam.getMovieNm();
+        this.movieNmEn = movieParam.getMovieNmEn();
+        this.prdtYear = movieParam.getPrdtYear();
+        this.openDt = movieParam.getOpenDt();
+        this.typeNm = movieParam.getTypeNm();
+        this.prdtStatNm = movieParam.getPrdtStatNm();
+        this.nationAlt = movieParam.getNationAlt();
+        this.genreAlt = movieParam.getGenreAlt();
+        this.repNationNm = movieParam.getRepNationNm();
+        this.repGenreNm = movieParam.getRepGenreNm();
+
+        this.directors = movieParam.getDirectors().stream()
+                .map(Director::getPeopleNm)
+                .limit(10)
+                .collect(Collectors.joining(", "));
+
+        this.companys = movieParam.getCompanys().stream()
+                .map(Company::getCompanyNm)
+                .limit(10)
+                .collect(Collectors.joining(", "));
+    }
+
 }
