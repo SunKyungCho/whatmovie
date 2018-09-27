@@ -1,7 +1,9 @@
 package me.toybox.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 import me.toybox.domain.Movie;
 import me.toybox.repository.MovieRankRepository;
 import me.toybox.repository.MovieRepository;
@@ -36,10 +38,10 @@ public class MovieDataService {
 
         String url = "http://www.kobis.or.kr/kobisopenapi/webservice/rest/movie/searchMovieList.json";
         UriComponentsBuilder uri = UriComponentsBuilder.fromUriString(url)
-                .queryParam("key", "c3ff4ee8a4ef39229a0b67f32520229d")
-                .queryParam("openStartDt", "0000")
-                .queryParam("openEndDt", "2019")
-                .queryParam("itemPerPage", "50000");
+                .queryParam("key", "c3ff4ee8a4ef39229a0b67f32520229d");
+//                .queryParam("openStartDt", "0000")
+//                .queryParam("openEndDt", "2019")
+//                .queryParam("itemPerPage", "50000");
 
         RestTemplate restTemplate = restTemplateBuilder.build();
         String response = restTemplate.getForObject(uri.toUriString(), String.class);
@@ -50,55 +52,84 @@ public class MovieDataService {
         if(jsonNode.isArray())
         {
             for (JsonNode node : jsonNode) {
-                String movieCd = node.get("movieCd").toString();
-                getMovieInfoDetail(movieCd);
+                if (isPorno(node)) {continue;} // 성인물 filter
+                String movieCd = node.get("movieCd").asText();
+                Movie movieDetail = getMovieInfoDetail(movieCd);
             }
         }
     }
 
-    public Movie getMovieInfoDetail(String movieCode) {
+    public Movie getMovieInfoDetail(String movieCode) throws IOException {
 
         String url = "http://www.kobis.or.kr/kobisopenapi/webservice/rest/movie/searchMovieInfo.json";
         UriComponentsBuilder uri = UriComponentsBuilder.fromUriString(url)
-                .queryParam("key", "c3ff4ee8a4ef39229a0b67f32520229d")
+                .queryParam("key", "4700c81bad7d023226fde29aa1aeed9e")
                 .queryParam("movieCd", movieCode);
 
         RestTemplate restTemplate = restTemplateBuilder.build();
         JsonNode movieDetailNode = restTemplate.getForObject(uri.toUriString(), JsonNode.class);
-        JsonNode movieInfo = movieDetailNode.get("movieListResult").get("movieInfo");
+        JsonNode movieInfo = movieDetailNode.get("movieInfoResult").get("movieInfo");
 
         Movie movie = new Movie();
-        movie.setName(movieInfo.get("movieNm").toString());
-        movie.setNameEn(movieInfo.get("movieNmEn").toString());
+        movie.setMovieCode(movieCode);
+        movie.setName(movieInfo.get("movieNm").asText());
+        movie.setNameEn(movieInfo.get("movieNmEn").asText());
 
         movie.setActor(getPeopleName(movieInfo.get("actors")));
         movie.setDirector(getPeopleName(movieInfo.get("directors")));
         movie.setGenre(getGenres(movieInfo.get("genres")));
+        movie.setNation(getNations(movieInfo.get("nations")));
+        movie.setRating(getRatings(movieInfo.get("audits")));
 
-        movie.setRating(movieInfo.get("").toString()); //나이
-        movie.setOpenDate(movieInfo.get("openDt").toString());
-        movie.setType(movieInfo.get("typeNm").toString());
-        movie.setStatus(movieInfo.get("prdtStatNm").toString());
-        movie.setNation(movieInfo.get("movieNmEn").toString());
-        movie.setProductionYear(movieInfo.get("movieNmEn").toString());
-        movie.setCompany(movieInfo.get("movieNmEn").toString());
+        movie.setOpenDate(movieInfo.get("openDt").asText());
+        movie.setShowTime(movieInfo.get("showTm").intValue());
+        movie.setType(movieInfo.get("typeNm").asText());
+        movie.setStatus(movieInfo.get("prdtStatNm").asText());
+        movie.setProductionYear(movieInfo.get("prdtYear").asText());
+        movie.setCompany(movieInfo.get("movieNmEn").asText());
 
         return movie;
     }
-
-    private String getPeopleName(JsonNode actors) {
-        List<JsonNode> actorJsonList = (List<JsonNode>) actors.iterator();
+    private String getNations(JsonNode nations) throws IOException {
+        ObjectReader reader = objectMapper.readerFor(new TypeReference<List<JsonNode>>(){});
+        List<JsonNode> nationJsonList = reader.readValue(nations);
+        return nationJsonList.stream()
+                .limit(5)
+                .map(actor -> actor.get("nationNm").asText())
+                .collect(Collectors.joining(","));
+    }
+    private String getPeopleName(JsonNode actors) throws IOException {
+        ObjectReader reader = objectMapper.readerFor(new TypeReference<List<JsonNode>>(){});
+        List<JsonNode> actorJsonList = reader.readValue(actors);
         return actorJsonList.stream()
                 .limit(5)
-                .map(actor -> actor.get("peopleNm").toString())
+                .map(actor -> actor.get("peopleNm").asText())
+                .collect(Collectors.joining(","));
+    }
+    private String getGenres(JsonNode genre) throws IOException {
+        ObjectReader reader = objectMapper.readerFor(new TypeReference<List<JsonNode>>(){});
+        List<JsonNode> genreJsonList = reader.readValue(genre);
+        return genreJsonList.stream()
+                .map(actor -> actor.get("genreNm").asText())
+                .collect(Collectors.joining(","));
+    }
+    private String getRatings(JsonNode rating) throws IOException {
+        ObjectReader reader = objectMapper.readerFor(new TypeReference<List<JsonNode>>(){});
+        List<JsonNode> ratingJsonList = reader.readValue(rating);
+        return ratingJsonList.stream()
+                .map(actor -> actor.get("watchGradeNm").asText())
                 .collect(Collectors.joining(","));
     }
 
-    private String getGenres(JsonNode actors) {
-        List<JsonNode> actorJsonList = (List<JsonNode>) actors.iterator();
-        return actorJsonList.stream()
-                .map(actor -> actor.get("genreNm").toString())
-                .collect(Collectors.joining(","));
+    private Boolean isPorno(JsonNode movie) {
+
+        String genre = movie.get("genreAlt").asText();
+        if(genre.equals("성인물(에로)")){
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 
 }

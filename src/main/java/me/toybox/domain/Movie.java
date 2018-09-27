@@ -16,7 +16,7 @@ public class Movie {
 
     @Id
     @GeneratedValue
-    private String movieNo;
+    private Integer movieNo;
     private String movieCode;
     private String name;
     private String nameEn;
