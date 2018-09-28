@@ -5,8 +5,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import me.toybox.domain.Movie;
+import me.toybox.domain.MovieUpdate;
 import me.toybox.repository.MovieRankRepository;
 import me.toybox.repository.MovieRepository;
+import me.toybox.repository.MovieUpdateRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Service;
@@ -28,20 +32,26 @@ public class MovieDataService {
     MovieRepository movieRepository;
     @Autowired
     MovieRankRepository movieRankRepository;
+
+    @Autowired
+    MovieUpdateRepository movieUpdateRepository;
+
     @Autowired
     RestTemplateBuilder restTemplateBuilder;
     @Autowired
     ObjectMapper objectMapper;
+
+    Logger logger = LoggerFactory.getLogger(MovieDataService.class);
 
 
     public void getMovieData() throws IOException {
 
         String url = "http://www.kobis.or.kr/kobisopenapi/webservice/rest/movie/searchMovieList.json";
         UriComponentsBuilder uri = UriComponentsBuilder.fromUriString(url)
-                .queryParam("key", "c3ff4ee8a4ef39229a0b67f32520229d");
-//                .queryParam("openStartDt", "0000")
-//                .queryParam("openEndDt", "2019")
-//                .queryParam("itemPerPage", "50000");
+                .queryParam("key", "c3ff4ee8a4ef39229a0b67f32520229d")
+                .queryParam("openStartDt", "0000")
+                .queryParam("openEndDt", "2019")
+                .queryParam("itemPerPage", "50000");
 
         RestTemplate restTemplate = restTemplateBuilder.build();
         String response = restTemplate.getForObject(uri.toUriString(), String.class);
@@ -53,8 +63,11 @@ public class MovieDataService {
         {
             for (JsonNode node : jsonNode) {
                 if (isPorno(node)) {continue;} // 성인물 filter
+                MovieUpdate movieUpdate = new MovieUpdate();
                 String movieCd = node.get("movieCd").asText();
-                Movie movieDetail = getMovieInfoDetail(movieCd);
+                movieUpdate.setMovieCode(movieCd);
+                movieUpdate.setIsUpdate(false);
+                movieUpdateRepository.save(movieUpdate);
             }
         }
     }
