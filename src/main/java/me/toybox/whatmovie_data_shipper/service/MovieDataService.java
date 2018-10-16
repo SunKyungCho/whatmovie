@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -48,8 +49,7 @@ public class MovieDataService {
 
     Logger logger = LoggerFactory.getLogger(MovieDataService.class);
 
-
-    public void getMovieData() throws IOException {
+    public void getMovieData(String movieCode) throws IOException {
 
         String url = "http://www.kobis.or.kr/kobisopenapi/webservice/rest/movie/searchMovieList.json";
         UriComponentsBuilder uri = UriComponentsBuilder.fromUriString(url)
@@ -77,22 +77,24 @@ public class MovieDataService {
         }
     }
 
-//    @Transactional
-//    public void saveMovieDetail() throws Exception {
-//
-//        List<String> movieCodeList = movieDetailService.getDetailMovieCode();
-//        for (String movieCode : movieCodeList) {
-//            Movie movie = getMovieInfoDetail(movieCode);
-//            movieRepository.save(movie);
-//        }
-//    }
+    public void saveMovieDetail() throws Exception {
 
+        List<MovieUpdate> movieCodeList = movieUpdateRepository.findTop3000ByIsUpdate(false, PageRequest.of(0,3000));
+        for (MovieUpdate movieUpdate : movieCodeList) {
+            String movieCode = movieUpdate.getMovieCode();
+            Movie movie= getMovieInfoDetail(movieCode);
+            movieRepository.save(movie);
+
+            movieUpdate.setIsUpdate(true);
+            movieUpdateRepository.save(movieUpdate);
+        }
+    }
 
     public Movie getMovieInfoDetail(String movieCode) throws IOException {
 
         String url = "http://www.kobis.or.kr/kobisopenapi/webservice/rest/movie/searchMovieInfo.json";
         UriComponentsBuilder uri = UriComponentsBuilder.fromUriString(url)
-                .queryParam("key", "4700c81bad7d023226fde29aa1aeed9e")
+                .queryParam("key", "c3ff4ee8a4ef39229a0b67f32520229d")
                 .queryParam("movieCd", movieCode);
 
         RestTemplate restTemplate = restTemplateBuilder.build();
