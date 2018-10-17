@@ -29,6 +29,8 @@ import java.util.stream.Collectors;
 @Service
 public class MovieDataService {
 
+    private Logger logger = LoggerFactory.getLogger(MovieDataService.class);
+
     @Autowired
     MovieDetailService movieDetailService;
 
@@ -47,10 +49,9 @@ public class MovieDataService {
     @Autowired
     ObjectMapper objectMapper;
 
-    Logger logger = LoggerFactory.getLogger(MovieDataService.class);
+    public void getMovieData() throws Exception{
 
-    public void getMovieData(String movieCode) throws IOException {
-
+        logger.info("get Movie Data. ");
         String url = "http://www.kobis.or.kr/kobisopenapi/webservice/rest/movie/searchMovieList.json";
         UriComponentsBuilder uri = UriComponentsBuilder.fromUriString(url)
                 .queryParam("key", "c3ff4ee8a4ef39229a0b67f32520229d")
@@ -67,27 +68,45 @@ public class MovieDataService {
         if(jsonNode.isArray())
         {
             for (JsonNode node : jsonNode) {
-                if (isPorno(node)) {continue;} // 성인물 filter
-                MovieUpdate movieUpdate = new MovieUpdate();
-                String movieCd = node.get("movieCd").asText();
-                movieUpdate.setMovieCode(movieCd);
-                movieUpdate.setIsUpdate(false);
-                movieUpdateRepository.save(movieUpdate);
+                try {
+                    if (isPorno(node)) {continue;} // 성인물 filter
+                    MovieUpdate movieUpdate = new MovieUpdate();
+                    String movieCd = node.get("movieCd").asText();
+                    movieUpdate.setMovieCode(movieCd);
+                    movieUpdate.setIsUpdate(false);
+                    movieUpdateRepository.save(movieUpdate);
+                }catch (Exception e){
+                    logger.warn("");
+                }
             }
         }
     }
 
-    public void saveMovieDetail() throws Exception {
+    public void saveMovieDetail(){
 
+        logger.info("Started update movie");
         List<MovieUpdate> movieCodeList = movieUpdateRepository.findTop3000ByIsUpdate(false, PageRequest.of(0,3000));
+        if(movieCodeList.size() == 0) {
+            logger.info("All movie was updated...");
+            return;
+        }
+        logger.info("Need to update the movies are..." + movieCodeList.size());
         for (MovieUpdate movieUpdate : movieCodeList) {
             String movieCode = movieUpdate.getMovieCode();
-            Movie movie= getMovieInfoDetail(movieCode);
+            Movie movie= null;
+            try {
+                movie = getMovieInfoDetail(movieCode);
+            } catch (IOException e) {
+                logger.warn("It can't get movie info. code : " + movieCode);
+                e.printStackTrace();
+            }
             movieRepository.save(movie);
 
             movieUpdate.setIsUpdate(true);
             movieUpdateRepository.save(movieUpdate);
         }
+
+        logger.info("Done... MovieDetail update");
     }
 
     public Movie getMovieInfoDetail(String movieCode) throws IOException {
