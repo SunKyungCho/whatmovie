@@ -5,6 +5,10 @@ import me.toybox.whatmovie_data_shipper.domain.Movie;
 import me.toybox.whatmovie_data_shipper.domain.MovieUpdate;
 import me.toybox.whatmovie_data_shipper.repository.MovieRepository;
 import me.toybox.whatmovie_data_shipper.repository.MovieUpdateRepository;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,4 +58,7 @@ public class MovieDataServiceTest {
         List<Movie> savedMovieList = movieRepository.findAll();
         assertThat(savedMovieList.size()).isEqualTo(3000);
     }
+
+
+
 }

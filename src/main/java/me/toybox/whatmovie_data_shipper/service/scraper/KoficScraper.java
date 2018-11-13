@@ -1,47 +1,36 @@
-package me.toybox.whatmovie_data_shipper.service;
+package me.toybox.whatmovie_data_shipper.service.scraper;
+
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import me.toybox.whatmovie_data_shipper.domain.Movie;
-import me.toybox.whatmovie_data_shipper.domain.MovieUpdate;
-import me.toybox.whatmovie_data_shipper.repository.MovieRankRepository;
-import me.toybox.whatmovie_data_shipper.repository.MovieRepository;
-import me.toybox.whatmovie_data_shipper.repository.MovieUpdateRepository;
+import me.toybox.whatmovie_data_shipper.service.MovieService;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-/**
- * Created by sunkyung on 2018. 4. 17..
- */
 
-@Service
-public class MovieDataService {
-
-    private Logger logger = LoggerFactory.getLogger(MovieDataService.class);
+@Component
+public class KoficScraper {
 
     @Autowired
-    MovieDetailService movieDetailService;
-
-    @Autowired
-    MovieRepository movieRepository;
-
-    @Autowired
-    MovieRankRepository movieRankRepository;
-
-    @Autowired
-    MovieUpdateRepository movieUpdateRepository;
+    MovieService movieService;
 
     @Autowired
     RestTemplateBuilder restTemplateBuilder;
@@ -49,9 +38,10 @@ public class MovieDataService {
     @Autowired
     ObjectMapper objectMapper;
 
-    public void getMovieData() throws Exception{
+    Logger logger = LoggerFactory.getLogger(KoficScraper.class);
 
-        logger.info("get Movie Data. ");
+    public List<String> getMovieCodeList() throws IOException {
+
         String url = "http://www.kobis.or.kr/kobisopenapi/webservice/rest/movie/searchMovieList.json";
         UriComponentsBuilder uri = UriComponentsBuilder.fromUriString(url)
                 .queryParam("key", "c3ff4ee8a4ef39229a0b67f32520229d")
@@ -65,51 +55,25 @@ public class MovieDataService {
         JsonNode rootNode = objectMapper.readTree(response);
         JsonNode jsonNode = rootNode.get("movieListResult").get("movieList");
 
+        List<String> codeList = Collections.emptyList();
         if(jsonNode.isArray())
         {
             for (JsonNode node : jsonNode) {
                 try {
                     if (isPorno(node)) {continue;} // 성인물 filter
-                    MovieUpdate movieUpdate = new MovieUpdate();
                     String movieCd = node.get("movieCd").asText();
-                    movieUpdate.setMovieCode(movieCd);
-                    movieUpdate.setIsUpdate(false);
-                    movieUpdateRepository.save(movieUpdate);
+                    Movie movie = scrapMovieDetail(movieCd);
+
+                    codeList.add(movieCd);
                 }catch (Exception e){
                     logger.warn("");
                 }
             }
         }
+        return codeList;
     }
 
-    public void saveMovieDetail(){
-
-        logger.info("Started update movie");
-        List<MovieUpdate> movieCodeList = movieUpdateRepository.findTop3000ByIsUpdate(false, PageRequest.of(0,3000));
-        if(movieCodeList.size() == 0) {
-            logger.info("All movie was updated...");
-            return;
-        }
-        logger.info("Need to update the movies are..." + movieCodeList.size());
-        for (MovieUpdate movieUpdate : movieCodeList) {
-            String movieCode = movieUpdate.getMovieCode();
-            Movie movie= null;
-            try {
-                movie = getMovieInfoDetail(movieCode);
-            } catch (IOException e) {
-                logger.warn("It can't get movie info. code : " + movieCode);
-                e.printStackTrace();
-            }
-            movieRepository.save(movie);
-
-            movieUpdate.setIsUpdate(true);
-            movieUpdateRepository.save(movieUpdate);
-        }
-
-        logger.info("Done... MovieDetail update");
-    }
-
-    public Movie getMovieInfoDetail(String movieCode) throws IOException {
+    public Movie scrapMovieDetail(String movieCode) throws IOException {
 
         String url = "http://www.kobis.or.kr/kobisopenapi/webservice/rest/movie/searchMovieInfo.json";
         UriComponentsBuilder uri = UriComponentsBuilder.fromUriString(url)
@@ -139,6 +103,24 @@ public class MovieDataService {
         movie.setCompany(movieInfo.get("movieNmEn").asText());
 
         return movie;
+    }
+
+    private String getImageUrl(String movieCode) throws IOException {
+
+        Document doc = Jsoup.connect("http://www.kobis.or.kr/kobis/business/mast/mvie/searchMovieDtl.do?code=" + movieCode).get();
+        Elements imageDiv = doc.select(".rollList1 a");
+        String onclick = imageDiv.get(0).attr("onclick");
+        Pattern pattern = Pattern.compile("/.*jpg");
+        Matcher matcher = pattern.matcher(onclick);
+        String imageUri = matcher.group();
+
+        return imageUri;
+    }
+
+
+    private String getDescription() {
+
+        return null;
     }
 
     private String getNations(JsonNode nations) throws IOException {
@@ -173,7 +155,6 @@ public class MovieDataService {
     }
 
     private Boolean isPorno(JsonNode movie) {
-
         String genre = movie.get("genreAlt").asText();
         if(genre.equals("성인물(에로)")){
             return true;

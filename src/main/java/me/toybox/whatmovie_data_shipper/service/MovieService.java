@@ -15,6 +15,11 @@ public class MovieService {
 
 
     @Transactional
+    public Movie save(Movie movie) {
+        return movieRepository.save(movie);
+    }
+
+    @Transactional(readOnly = true)
     public Boolean isExist(String movieCode) {
         Movie movie = movieRepository.findByMovieCode(movieCode);
         return movie==null ? true : false;
