@@ -9,7 +9,7 @@ public class WhatmovieDataShipperApplication {
 
     public static void main(String[] args) {
         SpringApplication app = new SpringApplication(WhatmovieDataShipperApplication.class);
-        app.setWebApplicationType(WebApplicationType.NONE);
+//        app.setWebApplicationType(WebApplicationType.NONE);
         app.run(args);
     }
 }

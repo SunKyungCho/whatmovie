@@ -1,4 +1,4 @@
-package me.toybox.whatmovie_data_shipper.service.scraper;
+package me.toybox.whatmovie_data_shipper.service;
 
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -6,13 +6,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import me.toybox.whatmovie_data_shipper.domain.Movie;
-import me.toybox.whatmovie_data_shipper.service.MovieService;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -27,27 +27,32 @@ import java.util.stream.Collectors;
 
 
 @Component
-public class KoficScraper {
+public class KoficService {
 
-    @Autowired
-    MovieService movieService;
 
-    @Autowired
-    RestTemplateBuilder restTemplateBuilder;
+    private ObjectMapper objectMapper;
+    private RestTemplateBuilder restTemplateBuilder;
 
-    @Autowired
-    ObjectMapper objectMapper;
+    public KoficService(RestTemplateBuilder restTemplateBuilder, ObjectMapper objectMapper) {
+        this.restTemplateBuilder = restTemplateBuilder;
+        this.objectMapper = objectMapper;
+    }
 
-    Logger logger = LoggerFactory.getLogger(KoficScraper.class);
+    @Value("${kofic.key}")
+    String myKey;
+
+
+    Logger logger = LoggerFactory.getLogger(KoficService.class);
 
     public List<String> getMovieCodeList() throws IOException {
 
         String url = "http://www.kobis.or.kr/kobisopenapi/webservice/rest/movie/searchMovieList.json";
         UriComponentsBuilder uri = UriComponentsBuilder.fromUriString(url)
-                .queryParam("key", "c3ff4ee8a4ef39229a0b67f32520229d")
+                .queryParam("key", myKey)
                 .queryParam("openStartDt", "0000")
                 .queryParam("openEndDt", "2019")
-                .queryParam("itemPerPage", "50000");
+                .queryParam("itemPerPage", "100")
+                .queryParam("curPage", "3000");
 
         RestTemplate restTemplate = restTemplateBuilder.build();
         String response = restTemplate.getForObject(uri.toUriString(), String.class);
@@ -60,10 +65,8 @@ public class KoficScraper {
         {
             for (JsonNode node : jsonNode) {
                 try {
-                    if (isPorno(node)) {continue;} // 성인물 filter
+                    if (isPorno(node)) continue; // 성인물 filter
                     String movieCd = node.get("movieCd").asText();
-                    Movie movie = scrapMovieDetail(movieCd);
-
                     codeList.add(movieCd);
                 }catch (Exception e){
                     logger.warn("");
@@ -77,14 +80,16 @@ public class KoficScraper {
 
         String url = "http://www.kobis.or.kr/kobisopenapi/webservice/rest/movie/searchMovieInfo.json";
         UriComponentsBuilder uri = UriComponentsBuilder.fromUriString(url)
-                .queryParam("key", "c3ff4ee8a4ef39229a0b67f32520229d")
+                .queryParam("key", myKey)
                 .queryParam("movieCd", movieCode);
 
         RestTemplate restTemplate = restTemplateBuilder.build();
         JsonNode movieDetailNode = restTemplate.getForObject(uri.toUriString(), JsonNode.class);
         JsonNode movieInfo = movieDetailNode.get("movieInfoResult").get("movieInfo");
 
-        Movie movie = new Movie();
+        Movie movie = Movie.builder()
+                .movieCode(movieCode)
+                .build();
         movie.setMovieCode(movieCode);
         movie.setName(movieInfo.get("movieNm").asText());
         movie.setNameEn(movieInfo.get("movieNmEn").asText());
@@ -156,12 +161,7 @@ public class KoficScraper {
 
     private Boolean isPorno(JsonNode movie) {
         String genre = movie.get("genreAlt").asText();
-        if(genre.equals("성인물(에로)")){
-            return true;
-        }
-        else {
-            return false;
-        }
+        return genre.equals("성인물(에로)");
     }
 
 }

@@ -1,4 +1,4 @@
-package me.toybox.whatmovie_data_shipper.service.scraper;
+package me.toybox.whatmovie_data_shipper.service;
 
 import me.toybox.whatmovie_data_shipper.domain.Movie;
 import org.slf4j.Logger;
@@ -18,14 +18,14 @@ public class MovieScraper {
 
 
     @Autowired
-    KoficScraper koficScraper;
+    KoficService koficService;
 
     public List<Movie> scrapMovie() throws IOException {
 
         List<Movie> movieList = new ArrayList<>();
-        List<String> movieCodes = koficScraper.getMovieCodeList();
+        List<String> movieCodes = koficService.getMovieCodeList();
         for (String movieCode : movieCodes) {
-            Movie movie = koficScraper.scrapMovieDetail(movieCode);
+            Movie movie = koficService.scrapMovieDetail(movieCode);
             movieList.add(movie);
         }
         return movieList;

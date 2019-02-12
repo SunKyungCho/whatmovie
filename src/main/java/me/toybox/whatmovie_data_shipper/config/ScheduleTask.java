@@ -9,8 +9,8 @@ import org.springframework.stereotype.Component;
 @EnableScheduling
 public class ScheduleTask {
 
-    @Autowired
-    MovieDataService movieDataService;
+//    @Autowired
+//    MovieDataService movieDataService;
 
 //    @Scheduled(cron = "5 1 1 * * *")
 //    public void totalMovieDataUpdate() {
@@ -24,16 +24,16 @@ public class ScheduleTask {
 
 //    }
 
-    @Scheduled(cron = "15 1 * * * *")
-    public void getMovieDetailInfo() {
-
-        try {
-            movieDataService.saveMovieDetail();
-        } catch (Exception e) {
-
-            e.printStackTrace();
-        }
-    }
+//    @Scheduled(cron = "15 1 * * * *")
+//    public void getMovieDetailInfo() {
+//
+//        try {
+////            movieDataService.saveMovieDetail();
+//        } catch (Exception e) {
+//
+//            e.printStackTrace();
+//        }
+//    }
 
 
 }

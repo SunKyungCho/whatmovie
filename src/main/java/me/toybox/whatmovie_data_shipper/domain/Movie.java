@@ -1,5 +1,6 @@
 package me.toybox.whatmovie_data_shipper.domain;
 
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
@@ -11,7 +12,7 @@ import javax.persistence.Id;
 import java.sql.Timestamp;
 
 @Entity(name="movie")
-@Getter @Setter
+@Getter @Setter @Builder
 public class Movie {
 
     @Id
