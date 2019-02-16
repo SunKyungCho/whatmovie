@@ -11,7 +11,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Component;
@@ -44,15 +43,15 @@ public class KoficService {
 
     Logger logger = LoggerFactory.getLogger(KoficService.class);
 
-    public List<String> getMovieCodeList() throws IOException {
+    public List<Movie> fetchMovieByPage(String page) throws IOException {
 
         String url = "http://www.kobis.or.kr/kobisopenapi/webservice/rest/movie/searchMovieList.json";
         UriComponentsBuilder uri = UriComponentsBuilder.fromUriString(url)
                 .queryParam("key", myKey)
-                .queryParam("openStartDt", "0000")
-                .queryParam("openEndDt", "2019")
+                .queryParam("openStartDt", "0000") //0000년부터
+                .queryParam("openEndDt", "3000") // 전체연도를 파악하기 위해
                 .queryParam("itemPerPage", "100")
-                .queryParam("curPage", "3000");
+                .queryParam("curPage", page);
 
         RestTemplate restTemplate = restTemplateBuilder.build();
         String response = restTemplate.getForObject(uri.toUriString(), String.class);
@@ -60,23 +59,19 @@ public class KoficService {
         JsonNode rootNode = objectMapper.readTree(response);
         JsonNode jsonNode = rootNode.get("movieListResult").get("movieList");
 
-        List<String> codeList = Collections.emptyList();
+        List<Movie> movies = Collections.emptyList();
         if(jsonNode.isArray())
         {
             for (JsonNode node : jsonNode) {
-                try {
-                    if (isPorno(node)) continue; // 성인물 filter
-                    String movieCd = node.get("movieCd").asText();
-                    codeList.add(movieCd);
-                }catch (Exception e){
-                    logger.warn("");
-                }
+                if (isPorno(node)) continue; // 성인물 filter
+                String movieCd = node.get("movieCd").asText();
+                movies.add(fetchMovieDetail(movieCd));
             }
         }
-        return codeList;
+        return movies;
     }
 
-    public Movie scrapMovieDetail(String movieCode) throws IOException {
+    private Movie fetchMovieDetail(String movieCode) throws IOException {
 
         String url = "http://www.kobis.or.kr/kobisopenapi/webservice/rest/movie/searchMovieInfo.json";
         UriComponentsBuilder uri = UriComponentsBuilder.fromUriString(url)

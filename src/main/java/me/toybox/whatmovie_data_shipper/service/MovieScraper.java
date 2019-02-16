@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 
 @Component
@@ -16,18 +17,27 @@ public class MovieScraper {
 
     Logger logger = LoggerFactory.getLogger(MovieScraper.class);
 
-
     @Autowired
     KoficService koficService;
 
-    public List<Movie> scrapMovie() throws IOException {
+    @Autowired
+    MovieService movieService;
 
+    public List<Movie> scrapMovie() throws IOException {
         List<Movie> movieList = new ArrayList<>();
-        List<String> movieCodes = koficService.getMovieCodeList();
-        for (String movieCode : movieCodes) {
-            Movie movie = koficService.scrapMovieDetail(movieCode);
-            movieList.add(movie);
-        }
+
+        IntStream.range(0,100)
+                .forEach(n -> {
+                    try{
+                        List<Movie> movies = koficService.fetchMovieByPage(n+"");
+                        saveMovies(movies);
+                    }catch (IOException e){
+                        throw new RuntimeException();
+                    }
+                });
         return movieList;
+    }
+    private void saveMovies(List<Movie> movies){
+        movies.forEach(movie -> movieService.save(movie));
     }
 }
